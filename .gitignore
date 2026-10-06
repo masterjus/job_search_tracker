@@ -1,0 +1,14 @@
+# Credentials & Local Data
+accounts.json
+*.pyc
+__pycache__/
+
+# Generated Reports (Privacy)
+job_applications_report.csv
+job_applications_report.html
+*.csv
+*.html
+
+# Scratch & Temporary
+scratch/
+.system_generated/
