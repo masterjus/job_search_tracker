@@ -697,6 +697,32 @@ def parse_date(date_str: str) -> datetime:
     except Exception:
         return datetime.min
 
+def normalize_since_date(date_str: str) -> str:
+    """
+    Приводит дату к стандарту IMAP (DD-Mon-YYYY, например 05-Oct-2026).
+    Поддерживает: DD-Mon-YYYY, YYYY-MM-DD, DD-MM-YYYY, DD.MM.YYYY, DD/MM/YYYY.
+    """
+    if not date_str:
+        return DEFAULT_SINCE_DATE
+    date_str = date_str.strip()
+    formats = [
+        "%d-%b-%Y",
+        "%d-%B-%Y",
+        "%Y-%m-%d",
+        "%d-%m-%Y",
+        "%d.%m.%Y",
+        "%d/%m/%Y",
+        "%Y/%m/%d",
+        "%Y.%m.%d",
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime("%d-%b-%Y")
+        except ValueError:
+            pass
+    return date_str
+
 def list_target_folders(mail):
     """
     Возвращает папки для сканирования: 'Вся почта' (флаг \\All), если она доступна по IMAP,
@@ -753,8 +779,8 @@ def fetch_emails_from_account(user_email: str, app_password: str, since_date: st
     mail._encoding = "utf-8"
     folders, has_all_mail = list_target_folders(mail)
     if not has_all_mail:
-        print("    ⚠ Папка 'Вся почта' скрыта от IMAP — сканирую все папки по отдельности.")
-        print("      (Можно включить: Gmail → Настройки → Ярлыки → 'Вся почта' → 'Показывать в IMAP')")
+        print("    ℹ Папка 'Вся почта' скрыта от IMAP — сканирую INBOX и остальные папки по отдельности.")
+        print("      (Подсказка для ускорения: Gmail → Настройки → Ярлыки → 'Вся почта' → 'Показать в IMAP')")
 
     for folder in folders:
         try:
@@ -762,7 +788,8 @@ def fetch_emails_from_account(user_email: str, app_password: str, since_date: st
             if status != 'OK':
                 continue
             status, messages = mail.search(None, 'SINCE', since_date)
-        except Exception:
+        except Exception as e:
+            print(f"    [!] Ошибка при поиске в папке {folder}: {e}")
             continue
         if status != 'OK' or not messages or not messages[0]:
             continue
@@ -1421,9 +1448,11 @@ def main():
     parser.add_argument("--csv", default="job_applications_report.csv", help="Путь для сохранения CSV файла")
     parser.add_argument("--html", default="job_applications_report.html", help="Путь для сохранения HTML отчета")
     args = parser.parse_args()
+    since_date = normalize_since_date(args.since)
 
     print("="*70)
     print("  JOB SEARCH EMAIL TRACKER & PIPELINE MANAGER")
+    print(f"  Дата выборки: с {since_date} (параметр: {args.since})")
     print("="*70)
 
     config_path = os.path.join(os.path.dirname(__file__), "accounts.json")
@@ -1443,7 +1472,7 @@ def main():
         imap_server = acc.get("imap_server", "")
         if not user_email or not app_password:
             continue
-        emails = fetch_emails_from_account(user_email, app_password, args.since, own_addresses, seen_ids, imap_server)
+        emails = fetch_emails_from_account(user_email, app_password, since_date, own_addresses, seen_ids, imap_server)
         all_emails.extend(emails)
 
     all_emails = select_relevant(all_emails)
