@@ -2,3 +2,7 @@
 # (без учёта регистра), письмо не попадёт в отчёт. Примеры:
 # @simplify.jobs
 # newsletter@
+leadbrokers
+@dou.eu
+@dou.ua
+@djinni.co

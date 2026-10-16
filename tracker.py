@@ -45,9 +45,12 @@ KNOWN_ATS_DOMAINS = [
 
 # Контекст вакансии: письмо должно его содержать, чтобы считаться откликом/ответом
 JOB_CONTEXT_RE = re.compile(
-    r"your application|applying|applied|application for|candida|\bposition\b|\brole\b|"
-    r"hiring process|recruitment|job search|ваканси|кандидат|резюме|отклик|"
-    r"aplikacj|rekrutac|stanowisk|\bcv\b",
+    r"your application|applying|applied|\bapply\b|application for|candida|\bposition\b|\brole\b|"
+    r"hiring process|recruitment|talent acquisition|job search|ваканси|кандидат|резюме|отклик|"
+    r"aplikacj|rekrutac|stanowisk|\bcv\b|interview|собеседован|assessment|"
+    r"rozmow[ayęi]\s+(?:kwalifikacyjn|rekrutacyjn|o\s+prac[eę])|"
+    r"(?:zaproszenie na|zapraszamy na|chcielibyśmy zaprosić na|chciał[a]?bym zaprosić na|umówić się na|gotowe na)\s+rozmowę|"
+    r"rozmowa telefoniczna została potwierdzona",
     re.IGNORECASE
 )
 
@@ -69,7 +72,13 @@ NON_JOB_DOMAINS = [
     "heavyocity.com", "wavelet-audio.com", "spotify.com", "support@hirify.me",
     "hey.simplify.jobs", "support@resumeworded.com", "laravel-news.com", "asana.com",
     "cloudflare.com", "santanderconsumer.pl", "messaging.logitech.com", "pkobp.pl",
-    "mbank.pl", "santander.pl", "pekao.com.pl", "ing.pl", "aliorbank.pl", "millennium.pl"
+    "mbank.pl", "santander.pl", "pekao.com.pl", "ing.pl", "aliorbank.pl", "millennium.pl",
+    "leadbrokers.pl",
+    # Сервисы по поиску работы и работников (биржи, агрегаторы, профили кандидатов)
+    "dou.eu", "dou.ua", "djinni.co", "pracuj.pl", "justjoin.it", "theprotocol.it",
+    "solidjobs.pl", "bulldogjob.pl", "bulldogjob.com", "jooble.org", "jooble.pl",
+    "stepstone.pl", "stepstone.de", "indeed.com", "indeedmail.com", "glassdoor.com",
+    "ziprecruiter.com", "praca.pl"
 ]
 
 # Первичные маркеры поиска работы
@@ -116,6 +125,8 @@ REJECTION_PATTERNS = [
     r"decided to progress with candidates",
     r"(?:closer|more closely) (?:align|match)",
     r"not (?:be )?(?:able to )?(?:progress|proceed|move forward) with your (?:application|candidacy)",
+    r"(?:cannot|can'?t|unable to|not able to) invite you to the next",
+    r"wish you the best of luck in your job search",
     r"will not be progressing",
     r"not been selected",
     r"we regret",
@@ -143,12 +154,19 @@ REJECTION_PATTERNS = [
 # Паттерны для интервью / тестирования
 INTERVIEW_PATTERNS = [
     r"invitation to interview",
-    r"schedule a (call|chat|time|meeting|screening)",
+    r"schedule (?:an?|the|your)?\s*(?:call|chat|time|meeting|screening|interview)",
+    r"interview availability",
+    r"video interview",
+    r"confirmed for (?:your )?interview",
+    r"(?:zoom|google meet|teams|video)\s+meeting\s+confirmation",
     r"screening call",
     r"phone screen",
     r"technical interview",
     r"calendly\.com",
-    r"online assessment stage",
+    r"greenhouse\.io/availability",
+    r"online assessment",
+    r"assessment invitation",
+    r"hiring assessment",
     r"passed the .*? hiring assessment",
     r"congratulations! you passed",
     r"complete the online assessment",
@@ -163,7 +181,23 @@ INTERVIEW_PATTERNS = [
     r"онлайн-встреч",
     # Pl
     r"zaproszenie na rozmowę",
-    r"chcielibyśmy zaprosić na rozmowę"
+    r"chcielibyśmy zaprosić na rozmowę",
+    r"chce przeprowadzić .*? rozmowę",
+    r"chcielibyśmy (?:umówić się|zaprosić) na rozmowę",
+    r"dostępnoś[ćci] do rozmowy",
+    r"(?:zaproszenie na|zapraszamy na|chcielibyśmy zaprosić na|chciał[a]?bym zaprosić na|chcemy zaprosić na|umówić się na|zaproponować)\s+rozmowę(?:\s+telefoniczną|\s+kwalifikacyjną|\s+rekrutacyjną)?",
+    r"(?:potwierdzenie|termin|zaplanowanie|etap)\s+rozmowy(?:\s+telefonicznej|\s+kwalifikacyjnej|\s+rekrutacyjnej)?",
+    r"(?:zaproszenie do|zapraszamy do)\s+udziału\s+w\s+rozmowie",
+    r"krótk[aą]\s+rozmow[aę]\s+telefoniczn",
+    r"wszystko gotowe na rozmowę",
+    r"rozmowa telefoniczna została potwierdzona",
+    r"zaplanowanie rozmowy kwalifikacyjnej",
+    r"test(?:u)? oceniając(?:y|ego|ym|e)",
+    r"wypełnij test",
+    r"ukończeni[ea] oceny",
+    r"ocen[yęa] amazon",
+    r"rozpocznij ocenę",
+    r"przystąp do testu"
 ]
 
 # Паттерны для оффера
@@ -199,9 +233,12 @@ CONFIRMATION_PATTERNS = [
     r"вы откликнулись на вакансию",
     r"отклик на вакансию.*отправлен",
     # Pl
-    r"dziękujemy za (?:przesłanie|twoją) (?:cv|aplikacj)",
+    r"dziękujemy za (?:przesłanie|twoją|złożenie) (?:cv|aplikacj|podania)",
     r"informacja o twojej aplikacji",
     r"twoja aplikacja została przesłana",
+    r"otrzymaliśmy twoje podanie",
+    r"polecił(?:a)? cię na stanowisko",
+    r"potwierdzenie otrzymania (?:twojej )?aplikacji",
     r"we(?:['’]ve| have) got your application"
 ]
 
@@ -223,7 +260,9 @@ def decode_mime_words(raw_header):
                 decoded_fragments.append(str(fragment))
     except Exception:
         return str(raw_header)
-    return "".join(decoded_fragments).strip()
+    res = "".join(decoded_fragments)
+    res = re.sub(r'[\r\n\t]+', ' ', res)
+    return re.sub(r'\s+', ' ', res).strip()
 
 def clean_subject_for_grouping(subject: str) -> str:
     """Удаляет префиксы ответов и пересылок (Re, Fwd, Odp, На)."""
@@ -330,7 +369,15 @@ def is_noise_or_marketing(subject: str, from_hdr: str, body: str) -> bool:
         if domain in from_email or domain in from_hdr.lower():
             return True
 
-    # 2. Безопасность аккаунтов (Google, Apple, MS, GitHub)
+    # 2. Безопасность аккаунтов, коды подтверждения и 2FA (Google, Apple, MS, GitHub, Amazon и др.)
+    if any(k in subj_lower for k in [
+        "verification code", "код подтверждения", "kod weryfikacyjny", "security code",
+        "one-time password", "kod bezpieczeństwa", "2-step verification", "two-factor"
+    ]):
+        return True
+    if "idprism-auth" in from_email:
+        return True
+
     if any(domain in from_email for domain in ["accounts.google.com", "google.com", "appleid.apple.com", "github.com"]):
         if any(w in subj_lower or w in body_snippet for w in [
             "парол", "password", "безопасност", "security alert", "вход в аккаунт", 
@@ -372,7 +419,7 @@ def is_noise_or_marketing(subject: str, from_hdr: str, body: str) -> bool:
     if any(re.search(pat, subj_lower) for pat in job_alert_patterns):
         return True
 
-    # 5. Регистрация и активация профилей без конкретного отклика
+    # 5. Регистрация, активация профилей и сервисы поиска работы (DOU, Djinni и др.)
     account_creation_patterns = [
         r"twoje konto na .* jest już aktywne",
         r"welcome - thanks for creating",
@@ -382,6 +429,12 @@ def is_noise_or_marketing(subject: str, from_hdr: str, body: str) -> bool:
         r"candidate profile - account details",
         r"welcome to aina",
         r"witamy na dou polska",
+        r"co powiesz na włączenie opcji",
+        r"(?:włączenie|włącz)\s+opcj[ię]\s+['\"]?szukam pracy['\"]?",
+        r"aktywuj profil kandydata",
+        r"kto oglądał twój profil",
+        r"nowa wiadomość od .* na dou",
+        r"nowa wiadomość na czacie",
         r"аккаунт успешно создан",
         r"подтвердите ваш email",
         r"verify your email address"
@@ -394,6 +447,16 @@ def is_noise_or_marketing(subject: str, from_hdr: str, body: str) -> bool:
         "podziel się z nami opinią", "wizyty w sklepie", "terms are changing", 
         "najważniejsza lekcja to", "deal days", "mobywatel", "prawdziwą aplikację", 
         "stronę logowania", "aktywacja aplikacji"
+    ]):
+        return True
+
+    # 7. Холодные B2B рассылки: кредиты, факторинг, лизинг, бухгалтерские услуги
+    if any(re.search(pat, subj_lower) for pat in [
+        r"(?:kredyt(?:y|ów|em)?|pożyczk[ai]|finansowani[ae]|leasing)\s+dla\s+firm",
+        r"(?:biur[oa]|usługi)\s+(?:rachunkow[eay]|księgow[eay])",
+        r"doradztw[oa]\s+podatkow[eay]",
+        r"prowadzenie\s+księgowości",
+        r"obsług[aę]\s+księgow[aą]",
     ]):
         return True
 
@@ -427,10 +490,11 @@ def normalize_company_name(name: str) -> str:
     clean = name.lower()
     clean = re.sub(r'["«»\'`“”]', '', clean)
     clean = re.sub(r'\.(?:com|pl|io|eu|ai|co|net|org|store)\b', '', clean)
+    clean = re.sub(r'^(?:join|inter|apply\s+to|work\s+at)\s+', '', clean, flags=re.IGNORECASE)
     suffixes = [
-        r'\b(?:llc|inc|corp|corporation|ltd|limited|gmbh|sa|bv|plc|sp\.\s*z\s*o\.o\.|sp\s*z\s*o\s*o)\b',
+        r'\b(?:llc|inc|corp|corporation|ltd|limited|gmbh|sa|bv|plc|sp\.\s*z\s*o\.o\.|sp\s*z\s*o\s*o|sp)\b',
         r'\b(?:ооо|зао|оао|пао|ао|нко)\b',
-        r'\b(?:technologies|technology|tech|software|solutions|services|group|labs|team|recruiting|recruitment|talent|interactive|systems|consulting)\b'
+        r'\b(?:technologies|technology|tech|software|solutions|services|purchasing|poland|polska|group|labs|team|recruiting|recruitment|talent|interactive|systems|consulting|global|holding|international)\b'
     ]
     for s in suffixes:
         clean = re.sub(s, '', clean, flags=re.IGNORECASE)
@@ -438,7 +502,7 @@ def normalize_company_name(name: str) -> str:
     return clean.strip()
 
 TECH_TITLE_RE = re.compile(
-    r'\b(?:(?:Lead|Senior|Principal|Staff|Head of|Director(?: of)?|VP(?: of)?|Chief|Junior|Mid|Middle)?\s*'
+    r'\b(?:(?:Lead|Senior|Sr\.?|Principal|Staff|Head of|Director(?: of)?|VP(?: of)?|Chief|Junior|Mid|Middle)?\s*'
     r'(?:Software|Data|Cloud|DevOps|Platform|Site Reliability|Backend|Frontend|Full[- ]?stack|Mobile|Security|Product|Engineering|QA|Test|Architecture|Enterprise|Solutions?|IT)?\s*'
     r'(?:Engineer|Developer|Architect|Manager|Lead|Officer|Director|Specialist|Consultant|CTO|Team Leader|Engineering Manager|Cooperation))\b',
     re.IGNORECASE
@@ -449,9 +513,10 @@ def clean_company_name(name: str) -> str:
     if not name:
         return ""
     name = re.sub(r'[\'"`“”«»]', '', name).strip()
+    name = re.sub(r'^(?:join|working at|work at|careers at|apply to)\s+', '', name, flags=re.I).strip()
     name = re.sub(r'\s*(?:Recruiting|Recruitment|Team|Hiring|Careers|Jobs|HR|Talent|Talent Acquisition|Global Talent Acquisition|Talent Attraction and Acquisition|Group|via\s+.*|System|no-reply|noreply|notifications?).*$', '', name, flags=re.I).strip()
     name = re.sub(r"['’]s$", "", name, flags=re.I).strip()
-    name = re.sub(r'\s+(?:Sp\.\s*z\s*o\.o\.|Sp\s*z\s*o\s*o|S\.A\.|SA|LLC|Inc\.?|Corp\.?|Ltd\.?|GmbH)$', '', name, flags=re.I).strip()
+    name = re.sub(r'\s+(?:Sp\.\s*z\s*o\.o\.|Sp\s*z\s*o\s*o|Sp\.?|S\.A\.|SA|LLC|Inc\.?|Corp\.?|Ltd\.?|GmbH|A/S|B\.V\.)$', '', name, flags=re.I).strip()
     return name.strip()
 
 def clean_position(pos: str, company: str = "") -> str:
@@ -459,26 +524,39 @@ def clean_position(pos: str, company: str = "") -> str:
     if not pos:
         return ""
     pos = unescape(pos).strip()
-    pos = re.sub(r'[\'"`“”«»]', '', pos).strip()
-    pos = re.sub(r'^(?:the|a|an)\s+', '', pos, flags=re.I).strip()
-    # Удаляем идентификаторы заявок (R1543646 - , 1711773 )
-    pos = re.sub(r'^[A-Z0-9]{5,12}\s*[-–—:]\s*', '', pos).strip()
+    pos = re.sub(r'[\'"`“”«»\u200b]', '', pos).strip()
+    pos = re.sub(r'^(?:the|a|an|our)\s+', '', pos, flags=re.I).strip()
+    if company and company.lower() in pos.lower():
+        pos = re.sub(rf'\b(?:at|with|in|for|w|we)?\s*{re.escape(company)}\b\s*[-–—:]?\s*', '', pos, flags=re.I).strip()
+    # Удаляем идентификаторы заявок (R1543646 - , 1711773 , (ID: 10529726))
+    pos = re.sub(r'^[A-Z0-9]{5,12}\s*(?:[-–—:]\s*|\s+)', '', pos).strip()
+    pos = re.sub(r'\s*\((?:ID|Req|Req ID)?:?\s*[\w\d\-_]+\)\s*$', '', pos, flags=re.I).strip()
     # Удаляем суффикс компании: "at Company", "with Company", "@ Company"
     pos = re.sub(r'\s+(?:at|with|here\s+at|in|w|we|@)\s+[A-Za-z0-9\s&/\\._-]+$', '', pos, flags=re.I).strip()
-    if company and company.lower() in pos.lower():
-        pos = re.sub(rf'\b(?:at|with|in|for)?\s*{re.escape(company)}\b', '', pos, flags=re.I).strip()
-    # Удаляем висящие союзы и предлоги в конце строки ("and", "or", "for", "at", "with", "in")
-    pos = re.sub(r'\s+(?:and|or|for|at|with|in)\s*$', '', pos, flags=re.I).strip()
+    # Удаляем висящие слова "role", "position", "job" и союзы в конце строки
+    pos = re.sub(r'\s+(?:role|position|job)\s*$', '', pos, flags=re.I).strip()
+    pos = re.sub(r'\s+(?:and|or|for|at|with|in|w|we)\s*$', '', pos, flags=re.I).strip()
     pos = pos.strip(' .,!?:;-–—')
     if len(pos) < 3 or len(pos) > 130:
         return ""
     bad_phrases = [
         "thank you", "thanks for", "update", "feedback", "your application", "quick check-in",
-        "job search", "recruitment", "a job can be exciting", "interest in"
+        "job search", "recruitment", "a job can be exciting", "interest in",
+        "not being able", "able to progress", "move forward", "other candidates", "unfortunately",
+        "other opportunities", "future opportunities", "in the meantime", "join the conversation"
     ]
-    if any(b in pos.lower() for b in bad_phrases):
+    if any(b in pos.lower() for b in bad_phrases) or pos.lower() in {
+        "other", "another", "this", "any", "role", "position", "job", "opportunity", "opportunities"
+    }:
         return ""
     return pos
+
+GENERIC_SENDER_NAMES = {
+    "", "не определена", "google", "gmail", "support", "notification", "notifications",
+    "workable", "traffit", "headhunter", "hh.ru", "linkedin", "no fluff jobs", "nofluffjobs",
+    "hr system", "staffing board", "erecruiter", "ashby", "greenhouse", "lever", "smartrecruiters",
+    "workday", "myworkday", "bamboohr", "teamtailor", "recruitee", "jobvite"
+}
 
 def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
     """
@@ -541,19 +619,24 @@ def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
     # 7. Имя отправителя From Name (если не платформа и не ATS)
     if not company and from_name:
         cand_from = clean_company_name(from_name)
-        if cand_from and cand_from.lower() not in ['google', 'gmail', 'support', 'notification', 'notifications', 'workable', 'traffit', 'headhunter', 'hh.ru', 'linkedin', 'no fluff jobs', 'hr system', 'staffing board']:
-            # Если в теме есть "at <Company>", это может быть точнее имени рекрутера
-            m_at = re.search(r'\b(?:at|@|with|to)\s+([A-Za-z0-9\s&]{2,35}?)(?:!|\.|,|-|—|–|\s*\(|\s*\[|\s*$)', subject, re.I)
+        if cand_from and cand_from.lower() not in GENERIC_SENDER_NAMES:
+            # Если в теме есть "at <Company>", проверим, не точнее ли оно (если в From Name не указан бренд)
+            m_at = re.search(r'\b(?:at|@|with|to(?:\s+join)?)\s+([A-Za-z0-9\s&]{2,35}?)(?:!|\.|,|-|—|–|\s*\(|\s*\[|\s*$)', subject, re.I)
             if m_at:
                 cand_at = clean_company_name(m_at.group(1))
-                if cand_at.lower() not in ["the", "a", "our", "present", "this stage"] and not any(k in cand_at.lower() for k in ["role", "position"]):
-                    company = cand_at
+                if cand_at and cand_at.lower() not in ["the", "a", "our", "present", "this stage"] and not any(k in cand_at.lower() for k in ["role", "position"]):
+                    # Если cand_from уже является частью cand_at (например "Inter IKEA" vs "IKEA Purchasing Services Poland Sp"),
+                    # предпочитаем более чистое брендовое имя из From Name
+                    if normalize_company_name(cand_from) and normalize_company_name(cand_from) == normalize_company_name(cand_at):
+                        company = cand_from if len(cand_from) <= len(cand_at) else cand_at
+                    else:
+                        company = cand_at
             if not company:
                 company = cand_from
 
     # 8. Суффикс "at / @ / with / to <Company>" в теме
     if not company:
-        m_at = re.search(r'\b(?:at|@|with|to)\s+([A-Za-z0-9\s&]{2,35}?)(?:!|\.|,|-|—|–|\s*\(|\s*\[|\s*$)', subject, re.I)
+        m_at = re.search(r'\b(?:at|@|with|to(?:\s+join)?)\s+([A-Za-z0-9\s&]{2,35}?)(?:!|\.|,|-|—|–|\s*\(|\s*\[|\s*$)', subject, re.I)
         if m_at:
             cand_at = clean_company_name(m_at.group(1))
             if cand_at.lower() not in ["the", "a", "our", "present", "this stage"] and not any(k in cand_at.lower() for k in ["role", "position"]):
@@ -583,15 +666,17 @@ def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
         if m_nfj:
             position = clean_position(m_nfj.group(1), company)
 
-    # 3. В теме письма: "application for <Position>", "applied to the <Position> role"
+    # 3. В теме письма: "application for <Position>", "applied to the <Position> role", "interest in <Position> at <Company>"
     if not position:
-        m_subj_pos = re.search(r'(?:application for|applied to the|applied for|interest in the|regarding your application for the)\s+(?:the\s+)?([A-Za-z0-9\s\-_/,\(\)&|]+?)(?:\s+(?:role|position|job)\b|\s+[@|at|w]\s+|\.|\n|$)', subject, re.I)
+        m_subj_pos = re.search(r'(?:application for|applied to(?: the)?|applied for|interest in(?: the)?|regarding your application for(?: the)?)\s+(?:the\s+)?([A-Za-z0-9\s\-_/\.,\(\)&|]+?)(?:\s+(?:role|position|job)\b|\s+(?:@|at|w|with)\s+|\n|$)', subject, re.I)
         if m_subj_pos:
-            position = clean_position(m_subj_pos.group(1), company)
+            cand = clean_position(m_subj_pos.group(1), company)
+            if cand and (not company or normalize_company_name(cand) != normalize_company_name(company)):
+                position = cand
 
     # 4. В теме письма: "<Position> at <Company>"
     if not position:
-        m_subj_at = re.search(r'^([A-Za-z0-9\s\-_/,\(\)&|]{3,80}?)\s+(?:at|@)\s+([A-Za-z0-9\s&]{2,30})', subject, re.I)
+        m_subj_at = re.search(r'^([A-Za-z0-9\s\-_/\.,\(\)&|]{3,80}?)\s+(?:at|@)\s+([A-Za-z0-9\s&]{2,30})', subject, re.I)
         if m_subj_at:
             cand = clean_position(m_subj_at.group(1), company)
             if cand and TECH_TITLE_RE.search(cand):
@@ -599,7 +684,7 @@ def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
 
     # 5. В теме письма: на польском "na stanowisko <Position>"
     if not position:
-        m_pl_subj = re.search(r'na\s+stanowisko\s+([A-Za-z0-9\s\-_/,\(\)&|]+?)(?:\s*[-–—|]|\.|\n|$)', subject, re.I)
+        m_pl_subj = re.search(r'na\s+stanowisk[ou]\s+(?!(?:w|we)\s+)([A-Za-z0-9\s\-_/,\(\)&|:ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+?)(?:\s*[-–—|]|\.|\n|$)', subject, re.I)
         if m_pl_subj:
             position = clean_position(m_pl_subj.group(1), company)
 
@@ -612,17 +697,17 @@ def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
     # 7. В тексте письма (явные HR конструкции)
     if not position:
         patterns_body = [
-            r'(?:role|position)\s+of\s+([A-Za-z0-9\s\-_/,\(\)&|]+?)(?:\s+(?:at|with|here\s+at)\b|\.|\n|$)',
-            r'(?:applying|applied|application)\s+for\s+(?:the\s+)?([A-Za-z0-9\s\-_/,\(\)&|]+?)(?:\s+(?:role|position|job)\b|\s+(?:at|with|here\s+at)\b|\.|\n|$)',
-            r'(?:interest in the|for the)\s+([A-Za-z0-9\s\-_/,\(\)&|]+?)\s+(?:role|position)\b',
-            r'na\s+stanowisko\s+([A-Za-z0-9\s\-_/,\(\)&|]+?)(?:\s+(?:w|we)\b|\.|\n|$)',
-            r'на\s+вакансию\s+([A-Za-z0-9\s\-_/,\(\)&|«»\"“]+?)(?:\s+(?:в|для)\b|\.|\n|$)'
+            r'(?:role|position|job)\s+(?:of|as)\s+([A-Za-z0-9\s\-_/\.,\(\)&|]+?)(?:\s+(?:at|with|here\s+at)\b|\.(?:\s|$)|\n|$)',
+            r'(?:applying|applied|application|apply)\s+(?:for|to)\s+(?:the\s+|our\s+)?([A-Za-z0-9\s\-_/\.,\(\)&|]+?)(?:\s+(?:role|position|job)\b|\s+(?:at|with|here\s+at|through)\b|\.(?:\s|$)|!|\n|$)',
+            r'(?:interest in the|for the)\s+([A-Za-z0-9\s\-_/\.,\(\)&|]+?)\s+(?:role|position|job)\b',
+            r'na\s+stanowisk[ou]\s+(?!(?:w|we)\s+)([A-Za-z0-9\s\-_/,\(\)&|:ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+?)(?:\s+(?:w|we)\s+[A-Z]|\.(?:\s|$)|\n|$)',
+            r'на\s+вакансию\s+([A-Za-z0-9\s\-_/,\(\)&|«»\"“]+?)(?:\s+(?:в|для)\b|\.(?:\s|$)|\n|$)'
         ]
         for pat in patterns_body:
             m_b = re.search(pat, body_one_line, re.I)
             if m_b:
                 cand = clean_position(m_b.group(1), company)
-                if cand:
+                if cand and (not company or normalize_company_name(cand) != normalize_company_name(company)):
                     position = cand
                     break
 
@@ -919,6 +1004,7 @@ def aggregate_job_applications(all_emails):
     """
     company_groups = defaultdict(list)
     orphans = []
+    own_accounts = {e["account"].lower() for e in all_emails if e.get("account")}
 
     for item in all_emails:
         norm_c = item["norm_company"]
@@ -926,6 +1012,38 @@ def aggregate_job_applications(all_emails):
             company_groups[norm_c].append(item)
         else:
             orphans.append(item)
+
+    # Второй уровень связывания: объединяем группы одного бренда, если у них:
+    # 1) один ключ нормализации входит в другой (длиной >= 4 символа, например "ikea" в "ikeapurchasing"), ИЛИ
+    # 2) совпадает брендовое (не платформенное и не собственное) имя отправителя From Name
+    group_keys = sorted(company_groups.keys(), key=len)
+    merged_into = {}
+    for i, k_short in enumerate(group_keys):
+        if k_short in merged_into:
+            continue
+        for k_long in group_keys[i + 1:]:
+            if k_long in merged_into:
+                continue
+            should_merge = False
+            if len(k_short) >= 4 and k_short in k_long:
+                should_merge = True
+            else:
+                # Проверяем совпадение бренда отправителя (исключая собственные адреса пользователя и универсальные ATS/платформы)
+                senders_s = {
+                    clean_company_name(extract_sender_name(e["from"])).lower()
+                    for e in company_groups[k_short]
+                    if extract_email_address(e["from"]) not in own_accounts
+                } - GENERIC_SENDER_NAMES
+                senders_l = {
+                    clean_company_name(extract_sender_name(e["from"])).lower()
+                    for e in company_groups[k_long]
+                    if extract_email_address(e["from"]) not in own_accounts
+                } - GENERIC_SENDER_NAMES
+                if senders_s & senders_l:
+                    should_merge = True
+            if should_merge:
+                company_groups[k_short].extend(company_groups.pop(k_long))
+                merged_into[k_long] = k_short
 
     # Привязка писем без определенной компании к существующим группам
     remaining_orphans = []
@@ -954,7 +1072,56 @@ def aggregate_job_applications(all_emails):
         subj_key = orphan["clean_subj"].lower()
         subject_groups[subj_key].append(orphan)
 
-    all_clusters = list(company_groups.values()) + list(subject_groups.values())
+    raw_clusters = list(company_groups.values()) + list(subject_groups.values())
+
+    # Если внутри одной компании есть отклики на совершенно разные должности (например,
+    # в Nord Security: "Engineering Manager | NordLayer" и "Backend Engineer | Mid | PHP | Systems Team"),
+    # разделяем их на отдельные карточки вакансий, чтобы статус одной не затирал статус другой.
+    generic_pos_words = ["не указана", "quick check-in", "feedback", "update", "application", "stanowisko", "your application"]
+
+    def is_specific_pos(p: str) -> bool:
+        return bool(p and not any(g in p.lower() for g in generic_pos_words))
+
+    def pos_tokens(p: str) -> set:
+        return {w for w in re.findall(r'[a-zA-Zа-яА-Я0-9]{3,}', p.lower()) if w not in {"the", "and", "for", "remote", "poland", "warsaw", "emea", "central"}}
+
+    all_clusters = []
+    for cluster in raw_clusters:
+        cluster.sort(key=lambda x: x["date"])
+        pos_buckets = []  # list of [tokens_set, emails_list]
+        unassigned = []
+        for e in cluster:
+            p = e["position"]
+            if is_specific_pos(p):
+                toks = pos_tokens(p)
+                matched_bucket = None
+                for b_toks, b_emails in pos_buckets:
+                    # Считаем одной и той же вакансией, если одно название включает другое или совпадает >= 50% ключевых слов
+                    overlap = len(toks & b_toks)
+                    if overlap >= 2 or (toks and b_toks and overlap / min(len(toks), len(b_toks)) >= 0.5):
+                        matched_bucket = (b_toks, b_emails)
+                        break
+                if matched_bucket:
+                    matched_bucket[0].update(toks)
+                    matched_bucket[1].append(e)
+                else:
+                    pos_buckets.append([ set(toks), [e] ])
+            else:
+                unassigned.append(e)
+
+        if len(pos_buckets) <= 1:
+            all_clusters.append(cluster)
+        else:
+            # Привязываем письма без указанной позиции к ближайшей по времени предшествующей ветке этой компании
+            for u in unassigned:
+                best_b = pos_buckets[0][1]
+                for _, b_emails in pos_buckets:
+                    if b_emails[0]["date"] <= u["date"]:
+                        best_b = b_emails
+                best_b.append(u)
+            for _, b_emails in pos_buckets:
+                all_clusters.append(b_emails)
+
     aggregated_records = []
     now = datetime.now()
 
@@ -965,14 +1132,15 @@ def aggregate_job_applications(all_emails):
         last_email = thread_emails[-1]
 
         valid_companies = [e["company"] for e in thread_emails if e["company"] != "Не определена"]
-        best_company = max(valid_companies, key=len) if valid_companies else first_email["company"]
+        # Выбираем наиболее лаконичное и чистое имя бренда (без длинных юрлиц, но не короче 2 символов)
+        best_company = min(valid_companies, key=len) if valid_companies else first_email["company"]
 
-        generic_pos_words = ["не указана", "quick check-in", "feedback", "update", "application", "stanowisko", "your application"]
         pos_candidates = [
             e["position"] for e in thread_emails 
-            if e["position"] and not any(g in e["position"].lower() for g in generic_pos_words)
+            if is_specific_pos(e["position"])
         ]
-        best_position = pos_candidates[0] if pos_candidates else first_email["position"]
+        # Выбираем наиболее полное название вакансии в рамках цепочки
+        best_position = max(pos_candidates, key=len) if pos_candidates else first_email["position"]
 
         # Иерархия статусов: Оффер > Отказ > Интервью > На рассмотрении
         rejection_emails = [e for e in thread_emails if "Отказ" in e["status"]]
@@ -1285,7 +1453,7 @@ def export_to_html(records, filename="job_applications_report.html"):
   </div>
 
   <div class="controls">
-    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск по компании, позиции или теме..." onkeyup="filterRows()">
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск по компании, позиции, теме или отправителю..." onkeyup="filterRows()">
     <button class="filter-btn active" onclick="setFilter('all', this)">Все ({total_apps})</button>
     <button class="filter-btn" onclick="setFilter('Отказ', this)">Отказы ({total_rejected})</button>
     <button class="filter-btn" onclick="setFilter('Приглашение', this)">Приглашения ({total_interviews})</button>
@@ -1333,6 +1501,7 @@ def export_to_html(records, filename="job_applications_report.html"):
           </td>
           <td>
             <div style="font-weight: 500; font-size: 13px;">{escape(r['last_subject'])}</div>
+            <div style="font-size: 11px; color: var(--accent); margin-top: 2px;">{escape(r['sender'])}</div>
             <div class="snippet-text">{escape(r['snippet'])}</div>
           </td>
         </tr>
