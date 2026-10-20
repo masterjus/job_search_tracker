@@ -148,7 +148,11 @@ REJECTION_PATTERNS = [
     # Pl
     r"nie możemy zaproponować",
     r"zdecydowaliśmy się na innego",
-    r"nie przechodzisz do kolejnego etapu"
+    r"nie przechodzisz do kolejnego etapu",
+    r"nie zdecydowaliśmy się na dalsze",
+    r"zdecydowaliśmy się nie (?:kontynuować|procedować)",
+    r"nie będziemy (?:kontynuować|dalej procedować)",
+    r"decided not to (?:progress|proceed|continue|move forward) with your (?:application|candidacy)"
 ]
 
 # Паттерны для интервью / тестирования
@@ -701,6 +705,7 @@ def parse_metadata_from_email(subject: str, from_hdr: str, body: str):
             r'(?:applying|applied|application|apply)\s+(?:for|to)\s+(?:the\s+|our\s+)?([A-Za-z0-9\s\-_/\.,\(\)&|]+?)(?:\s+(?:role|position|job)\b|\s+(?:at|with|here\s+at|through)\b|\.(?:\s|$)|!|\n|$)',
             r'(?:interest in the|for the)\s+([A-Za-z0-9\s\-_/\.,\(\)&|]+?)\s+(?:role|position|job)\b',
             r'na\s+stanowisk[ou]\s+(?!(?:w|we)\s+)([A-Za-z0-9\s\-_/,\(\)&|:ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+?)(?:\s+(?:w|we)\s+[A-Z]|\.(?:\s|$)|\n|$)',
+            r'(?:na temat|w sprawie|dotycząc[ey])\s+stanowiska\s+([A-Za-z0-9\s\-_/,&|:ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+?)(?:\s*\(ID|\s+(?:w|we)\s+[A-Z]|\.(?:\s|$)|\n|$)',
             r'на\s+вакансию\s+([A-Za-z0-9\s\-_/,\(\)&|«»\"“]+?)(?:\s+(?:в|для)\b|\.(?:\s|$)|\n|$)'
         ]
         for pat in patterns_body:
